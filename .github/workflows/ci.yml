@@ -32,6 +32,13 @@ jobs:
         with:
           submodules: 'true'
           fetch-depth: 0
+          
+      - name: Set up Procursus
+        uses: beerpiss/procursus-action@v2
+        with:
+          packages: cmake llvm llvm-utils-11 gmake automake autoconf cmake clang bash sed openssl libssl-dev gcc lld-11
+          cache: true
+          mirror: https://procursus.itsnebula.net
 
       - name: Build libgeneral
         run: |
@@ -144,6 +151,19 @@ jobs:
         with:
           submodules: 'true'
           fetch-depth: 0
+
+      - name: Prepare environment
+        run: |
+          apt-get -qq update
+          apt-get -yqq dist-upgrade
+          apt-get install --no-install-recommends -yqq zstd curl gnupg2 lsb-release wget software-properties-common build-essential git autoconf automake libtool-bin pkg-config cmake zlib1g-dev libminizip-dev libpng-dev libreadline-dev libbz2-dev libudev-dev libudev1
+          cp -RpP /usr/bin/ld /
+          rm -rf /usr/bin/ld /usr/lib/x86_64-linux-gnu/lib{usb-1.0,png*,readline}.so*
+
+          curl -LO https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          ./llvm.sh 13 all
+          ln -sf /usr/bin/ld.lld-13 /usr/bin/ld
 
       - name: Build libgeneral
         run: |
