@@ -11,13 +11,21 @@ on:
     - cron: '0 0 28 9 *'
     - cron: '0 0 27 12 *'
 
+
+env:
+  CONF_ARGS: "--disable-shared"
+  CMAKE_ARGS: "-DBUILD_SHARED_LIBS=0"
+  CC: "clang"
+  CFLAGS: "-fPIC"
+  CXX: "clang++"
+  CXXFLAGS: "-fPIC"
+  LD: "ld.lld"
+  LDFLAGS: "-fuse-ld=/usr/bin/ld.lld -static -static-libgcc -Wl,--allow-multiple-definition -Wl,--no-dynamic-linker -Wl,-static"
+
 jobs:
-  macOS:
-    env:
-      PROCURSUS: /opt/procursus
-      PATH: /opt/procursus/bin:/opt/procursus/libexec/gnubin:/usr/local/lib/ruby/gems/2.7.0/bin:/usr/local/opt/ruby@2.7/bin:/usr/local/opt/pipx_bin:/Users/runner/.cargo/bin:/usr/local/opt/curl/bin:/usr/local/bin:/usr/local/sbin:/Users/runner/bin:/Users/runner/.yarn/bin:/Users/runner/Library/Android/sdk/tools:/Users/runner/Library/Android/sdk/platform-tools:/Users/runner/Library/Android/sdk/ndk-bundle:/Library/Frameworks/Mono.framework/Versions/Current/Commands:/usr/bin:/bin:/usr/sbin:/sbin:/Users/runner/.dotnet/tools:/Users/runner/.ghcup/bin:/Users/runner/hostedtoolcache/stack/2.7.3/x64
+  build-macos:
+    runs-on: macos-latest
     
-    runs-on: macos-11
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -25,11 +33,94 @@ jobs:
           submodules: 'true'
           fetch-depth: 0
 
+      - name: Build libgeneral
+        run: |
+          git clone --single-branch https://github.com/tihmstar/libgeneral
+          cd libgeneral
+          ./autogen.sh $CONF_ARGS
+          make -j$(sysctl -n hw.ncpu)
+          make install
+          rm -rf /tmp/build
+          cd ..
+
+      - name: Build libinsn
+        run: |
+          git clone --single-branch https://github.com/tihmstar/libinsn
+          cd libinsn
+          ./autogen.sh $CONF_ARGS
+          make -j$(sysctl -n hw.ncpu)
+          make install
+          rm -rf /tmp/build
+          cd ..
+
+      - name: Build cctools
+        run: |
+          mkdir cctools
+          cd cctools
+          curl -LO https://opensource.apple.com/tarballs/cctools/cctools-927.0.2.tar.gz
+          tar -xvzf cctools-927.0.2.tar.gz
+          sed -i 's_#include_//_g' cctools-cctools-927.0.2/include/mach-o/loader.h
+          sed -i -e 's=<stdint.h>=\n#include <stdint.h>\ntypedef int integer_t;\ntypedef integer_t cpu_type_t;\ntypedef integer_t cpu_subtype_t;\ntypedef integer_t cpu_threadtype_t;\ntypedef int vm_prot_t;=g' cctools-cctools-927.0.2/include/mach-o/loader.h
+          mkdir -p /usr/local/include
+          cp -r cctools-cctools-927.0.2/include/* /usr/local/include/
+          rm -rf tmp cctools-927.0.2.tar.gz
+          cd ..
+
+      - name: Build liboffsetfinder64
+        run: |
+          git clone --single-branch https://github.com/palera1n/liboffsetfinder64
+          cd liboffsetfinder64
+          cmake . $CMAKE_ARGS
+          sed -i -r 's/_entrypoint\(NULL\)/_entrypoint(0)/' src/patchfinder64.cpp
+          sed -i -r 's/_base\(NULL\)/_base(0)/' src/patchfinder64.cpp
+          make -j$(sysctl -n hw.ncpu)
+          make install
+          rm -rf /tmp/build
+          cd ..
+
+      - name: Build lzfse
+        run: |
+          git clone --depth=1 https://github.com/lzfse/lzfse
+          cd lzfse
+          cmake . $CMAKE_ARGS
+          make -j$(sysctl -n hw.ncpu)
+          make install
+          rm -rf /tmp/build
+          cd ..
+
+      - name: Build libplist
+        run: |
+          git clone --depth=1 https://github.com/libimobiledevice/libplist
+          cd libplist
+          ./autogen.sh $CONF_ARGS --without-cython
+          make -j$(sysctl -n hw.ncpu)
+          make install
+          rm -rf /tmp/build
+          cd ..
+
+      - name: Build img4tool
+        env:
+          LDFLAGS: "${LDFLAGS} -L/usr/local/lib"
+        run: |
+          git clone --single-branch https://github.com/tihmstar/img4tool
+          cd img4tool
+          ls -l /usr/local/include/ /usr/local/lib/
+          ./autogen.sh $CONF_ARGS
+          make -j$(sysctl -n hw.ncpu)
+          make install
+          rm -rf /tmp/build
+          cd ..
+
       - name: Build
         run: |
-          ${{ github.workspace }}/.github/workflows/mac-bootstrap.sh
-          ${{ github.workspace }}/.github/workflows/mac-build.sh
-          ${{ github.workspace }}/.github/workflows/mac-post.sh
+          sed -i 's/futurerestore/iBoot64Patcher/g' CMakeLists.txt
+          cmake . $CMAKE_ARGS
+          make -j$(sysctl -n hw.ncpu)
+          make install
+          rm -rf /tmp/build
+
+          echo -n $(git rev-parse HEAD | tr -d '\n') > latest_build_sha.txt
+          echo -n $(git rev-list --count HEAD | tr -d '\n') > latest_build_num.txt
 
       - name: Upload versioning
         uses: actions/upload-artifact@v2
@@ -39,31 +130,13 @@ jobs:
             ${{ github.workspace }}/latest_build_sha.txt
             ${{ github.workspace }}/latest_build_num.txt
 
-      - name: Upload x86_64-RELEASE
+      - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
-          name: iBoot64Patcher-macOS-x86_64-RELEASE
-          path: ${{ github.workspace }}/iBoot64Patcher-macOS-x86_64-*-RELEASE.tar.xz
+          name: iBoot64Patcher-Darwin
+          path: /usr/local/iBoot64Patcher
 
-      - name: Upload x86_64-DEBUG
-        uses: actions/upload-artifact@v2
-        with:
-          name: iBoot64Patcher-macOS-x86_64-DEBUG
-          path: ${{ github.workspace }}/iBoot64Patcher-macOS-x86_64-*-DEBUG.tar.xz
-
-      - name: Upload arm64-RELEASE
-        uses: actions/upload-artifact@v2
-        with:
-          name: iBoot64Patcher-macOS-arm64-RELEASE
-          path: ${{ github.workspace }}/iBoot64Patcher-macOS-arm64-*-RELEASE.tar.xz
-
-      - name: Upload arm64-DEBUG
-        uses: actions/upload-artifact@v2
-        with:
-          name: iBoot64Patcher-macOS-arm64-DEBUG
-          path: ${{ github.workspace }}/iBoot64Patcher-macOS-arm64-*-DEBUG.tar.xz
-
-  Linux:
+  build-linux:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -72,38 +145,105 @@ jobs:
           submodules: 'true'
           fetch-depth: 0
 
+      - name: Build libgeneral
+        run: |
+          git clone --single-branch https://github.com/tihmstar/libgeneral
+          cd libgeneral
+          ./autogen.sh $CONF_ARGS
+          make -j$(nproc)
+          make install
+          rm -rf /tmp/build
+          cd ..
+
+      - name: Build libinsn
+        run: |
+          git clone --single-branch https://github.com/tihmstar/libinsn
+          cd libinsn
+          ./autogen.sh $CONF_ARGS
+          make -j$(nproc)
+          make install
+          rm -rf /tmp/build
+          cd ..
+
+      - name: Build cctools
+        run: |
+          mkdir cctools
+          cd cctools
+          curl -LO https://opensource.apple.com/tarballs/cctools/cctools-927.0.2.tar.gz
+          tar -xvzf cctools-927.0.2.tar.gz
+          sed -i 's_#include_//_g' cctools-cctools-927.0.2/include/mach-o/loader.h
+          sed -i -e 's=<stdint.h>=\n#include <stdint.h>\ntypedef int integer_t;\ntypedef integer_t cpu_type_t;\ntypedef integer_t cpu_subtype_t;\ntypedef integer_t cpu_threadtype_t;\ntypedef int vm_prot_t;=g' cctools-cctools-927.0.2/include/mach-o/loader.h
+          mkdir -p /usr/local/include
+          cp -r cctools-cctools-927.0.2/include/* /usr/local/include/
+          rm -rf tmp cctools-927.0.2.tar.gz
+          cd ..
+
+      - name: Build liboffsetfinder64
+        run: |
+          git clone --single-branch https://github.com/palera1n/liboffsetfinder64
+          cd liboffsetfinder64
+          cmake . $CMAKE_ARGS
+          sed -i -r 's/_entrypoint\(NULL\)/_entrypoint(0)/' src/patchfinder64.cpp
+          sed -i -r 's/_base\(NULL\)/_base(0)/' src/patchfinder64.cpp
+          make -j$(nproc)
+          make install
+          rm -rf /tmp/build
+          cd ..
+
+      - name: Build lzfse
+        run: |
+          git clone --depth=1 https://github.com/lzfse/lzfse
+          cd lzfse
+          cmake . $CMAKE_ARGS
+          make -j$(nproc)
+          make install
+          rm -rf /tmp/build
+          cd ..
+
+      - name: Build libplist
+        run: |
+          git clone --depth=1 https://github.com/libimobiledevice/libplist
+          cd libplist
+          ./autogen.sh $CONF_ARGS --without-cython
+          make -j$(nproc)
+          make install
+          rm -rf /tmp/build
+          cd ..
+
+      - name: Build img4tool
+        env:
+          LDFLAGS: "${LDFLAGS} -L/usr/local/lib"
+        run: |
+          git clone --single-branch https://github.com/tihmstar/img4tool
+          cd img4tool
+          ls -l /usr/local/include/ /usr/local/lib/
+          ./autogen.sh $CONF_ARGS
+          make -j$(nproc)
+          make install
+          rm -rf /tmp/build
+          cd ..
+
       - name: Build
-        uses: addnab/docker-run-action@v3
-        with:
-          image: debian:buster-slim
-          options: -v ${{ github.workspace }}/..:/tmp/Builder/repos/
-          run: |
-            /tmp/Builder/repos/iBoot64Patcher/.github/workflows/linux-bootstrap.sh
-            /tmp/Builder/repos/iBoot64Patcher/.github/workflows/linux-build.sh
-            /tmp/Builder/repos/iBoot64Patcher/.github/workflows/linux-post.sh
-
-      - name: Build x86_64-RELEASE
         run: |
-          mkdir -p ${{ github.workspace }}/.github/workflows/
-          docker cp $(docker ps -ql):/tmp/Builder/repos/iBoot64Patcher/.github/workflows/name1.txt ${{ github.workspace }}/.github/workflows/
-          docker cp $(docker ps -ql):/tmp/Builder/repos/iBoot64Patcher/.github/workflows/iBoot64Patcher1.tar.xz ${{ github.workspace }}/.github/workflows/
-          mv ${{ github.workspace }}/.github/workflows/iBoot64Patcher1.tar.xz ${{ github.workspace }}/.github/workflows/$(cat ${{ github.workspace }}/.github/workflows/name1.txt)
+          sed -i 's/futurerestore/iBoot64Patcher/g' CMakeLists.txt
+          cmake . $CMAKE_ARGS
+          make -j$(nproc)
+          make install
+          rm -rf /tmp/build
 
-      - name: Build x86_64-DEBUG
-        run: |
-          mkdir -p ${{ github.workspace }}/.github/workflows/
-          docker cp $(docker ps -ql):/tmp/Builder/repos/iBoot64Patcher/.github/workflows/name2.txt ${{ github.workspace }}/.github/workflows/
-          docker cp $(docker ps -ql):/tmp/Builder/repos/iBoot64Patcher/.github/workflows/iBoot64Patcher2.tar.xz ${{ github.workspace }}/.github/workflows/
-          mv ${{ github.workspace }}/.github/workflows/iBoot64Patcher2.tar.xz ${{ github.workspace }}/.github/workflows/$(cat ${{ github.workspace }}/.github/workflows/name2.txt)
+          echo -n $(git rev-parse HEAD | tr -d '\n') > latest_build_sha.txt
+          echo -n $(git rev-list --count HEAD | tr -d '\n') > latest_build_num.txt
 
-      - name: Upload x86_64-RELEASE
+      - name: Upload versioning
         uses: actions/upload-artifact@v2
         with:
-          name: iBoot64Patcher-Linux-x86_64-RELEASE
-          path: ${{ github.workspace }}/.github/workflows/iBoot64Patcher-Linux-x86_64*-RELEASE.tar.xz
+          name: Versioning
+          path: |
+            ${{ github.workspace }}/latest_build_sha.txt
+            ${{ github.workspace }}/latest_build_num.txt
 
-      - name: Upload x86_64-DEBUG
+      - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
-          name: iBoot64Patcher-Linux-x86_64-DEBUG
-          path: ${{ github.workspace }}/.github/workflows/iBoot64Patcher-Linux-x86_64*-DEBUG.tar.xz
+          name: iBoot64Patcher-Linux
+          path: /usr/local/iBoot64Patcher
