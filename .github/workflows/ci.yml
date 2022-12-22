@@ -36,7 +36,7 @@ jobs:
       - name: Set up Procursus
         uses: beerpiss/procursus-action@v2
         with:
-          packages: cmake llvm llvm-utils make automake autoconf cmake clang bash sed openssl libssl-dev lld
+          packages: cmake llvm make automake autoconf cmake clang bash sed openssl libssl-dev lld
           cache: true
           mirror: https://procursus.itsnebula.net
 
@@ -162,7 +162,7 @@ jobs:
 
           curl -LO https://apt.llvm.org/llvm.sh
           chmod +x llvm.sh
-          ./llvm.sh 13 all
+          sudo ./llvm.sh 13 all
           sudo ln -sf /usr/bin/ld.lld-13 /usr/bin/ld
 
       - name: Build libgeneral
