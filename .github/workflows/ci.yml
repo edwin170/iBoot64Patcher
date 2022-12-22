@@ -156,13 +156,9 @@ jobs:
         run: |
           sudo apt-get -qq update
           sudo apt-get -yqq dist-upgrade
-          sudo apt-get install --no-install-recommends -yqq zstd curl gnupg2 lsb-release wget software-properties-common build-essential git autoconf automake libtool-bin pkg-config cmake zlib1g-dev libminizip-dev libpng-dev libreadline-dev libbz2-dev libudev-dev libudev1
+          sudo apt-get install --no-install-recommends -yqq zstd curl gnupg2 lsb-release wget software-properties-common build-essential git autoconf automake libtool-bin pkg-config cmake zlib1g-dev libminizip-dev libpng-dev libreadline-dev libbz2-dev libudev-dev libudev1 libreadline-dev llvm
           sudo cp -RpP /usr/bin/ld /
           sudo rm -rf /usr/bin/ld /usr/lib/x86_64-linux-gnu/lib{usb-1.0,png*,readline}.so*
-
-          curl -LO https://apt.llvm.org/llvm.sh
-          chmod +x llvm.sh
-          sudo ./llvm.sh 13 all
           sudo ln -sf /usr/bin/ld.lld-13 /usr/bin/ld
 
       - name: Build libgeneral
