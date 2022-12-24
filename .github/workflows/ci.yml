@@ -15,9 +15,9 @@ on:
 env:
   CONF_ARGS: "--disable-shared"
   CMAKE_ARGS: "-DBUILD_SHARED_LIBS=0"
-  CC: "clang"
+  CC: "gcc"
   CFLAGS: "-fPIC"
-  CXX: "clang++"
+  CXX: "g++"
   CXXFLAGS: "-fPIC"
   LD: "ld.lld"
   LDFLAGS: "-fuse-ld=/usr/bin/ld.lld -static -static-libgcc -Wl,--allow-multiple-definition -Wl,--no-dynamic-linker -Wl,-static"
@@ -156,10 +156,11 @@ jobs:
         run: |
           sudo apt-get -qq update
           sudo apt-get -yqq dist-upgrade
-          sudo apt-get install --no-install-recommends -yqq zstd curl gnupg2 lsb-release wget software-properties-common build-essential git autoconf automake libtool-bin pkg-config cmake zlib1g-dev libminizip-dev libpng-dev libreadline-dev libbz2-dev libudev-dev libudev1 libreadline-dev llvm
+          sudo apt-get install --no-install-recommends -yqq zstd curl gnupg2 lsb-release wget software-properties-common build-essential git autoconf automake libtool-bin pkg-config cmake zlib1g-dev libminizip-dev libpng-dev libreadline-dev libbz2-dev libudev-dev libudev1 libreadline-dev llvm lld musl musl-dev musl-tools
           sudo cp -RpP /usr/bin/ld /
           sudo rm -rf /usr/bin/ld
           sudo ln -sf /usr/bin/ld.lld-13 /usr/bin/ld
+          sudo ln -sf /lib/x86_64-linux-gnu/libtic.so.6.* /lib/x86_64-linux-gnu/libtinfow.so.6
 
       - name: Build libgeneral
         run: |
