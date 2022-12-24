@@ -11,12 +11,11 @@ on:
     - cron: '0 0 28 9 *'
     - cron: '0 0 27 12 *'
 
-
 env:
   CONF_ARGS: "--disable-shared"
   CMAKE_ARGS: "-DBUILD_SHARED_LIBS=0"
   CC: "gcc"
-  CFLAGS: "-fPIC"
+  CFLAGS: "" #"-fPIC"
   CXX: "g++"
   CXXFLAGS: "-fPIC"
   LD: "ld.lld"
@@ -34,7 +33,7 @@ jobs:
           fetch-depth: 0
           
       - name: Set up Procursus
-        uses: beerpiss/procursus-action@v2
+        uses: itsnebulalol/procursus-action@patch-1 # temporarily change this to my fork since upstream is broken
         with:
           packages: cmake llvm make automake autoconf cmake clang bash sed openssl libssl-dev lld
           cache: true
