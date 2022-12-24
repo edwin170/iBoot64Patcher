@@ -14,12 +14,9 @@ on:
 env:
   CONF_ARGS: "--disable-shared"
   CMAKE_ARGS: "-DBUILD_SHARED_LIBS=0"
-  CC: "gcc"
-  CFLAGS: "" #"-fPIC"
-  CXX: "g++"
+  CFLAGS: "-fPIC"
   CXXFLAGS: "-fPIC"
-  LD: "ld.lld"
-  LDFLAGS: "-fuse-ld=/usr/bin/ld.lld -static -static-libgcc -Wl,--allow-multiple-definition -Wl,--no-dynamic-linker -Wl,-static"
+  LDFLAGS: "-L/usr/local/lib -fuse-ld=lld"
 
 jobs:
   build-macos:
