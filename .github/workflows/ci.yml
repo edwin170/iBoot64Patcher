@@ -32,7 +32,7 @@ jobs:
       - name: Set up Procursus
         uses: itsnebulalol/procursus-action@patch-1 # temporarily change this to my fork since upstream is broken
         with:
-          packages: cmake llvm make automake autoconf cmake clang bash sed openssl libssl-dev lld
+          packages: cmake llvm make automake autoconf cmake clang bash sed openssl libssl-dev lld libtool pkg-config
           cache: true
           mirror: https://procursus.itsnebula.net
 
