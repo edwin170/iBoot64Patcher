@@ -188,7 +188,7 @@ int main(int argc, const char * argv[]) {
     for (auto p : patches) {
         char *buf = (char*)ibp->buf();
         offset_t off = (offset_t)(p._location - ibp->find_base());
-        printf("applying patch=%p : ",p._location);
+        printf("applying patch=0x%llx : ",p._location);
         for (int i=0; i<p._patchSize; i++) {
             printf("%02x",((uint8_t*)p._patch)[i]);
         }
