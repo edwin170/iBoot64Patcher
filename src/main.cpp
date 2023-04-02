@@ -26,6 +26,7 @@ int main(int argc, const char * argv[]) {
     FILE* fp = NULL;
     char* cmd_handler_str = NULL;
     char* custom_boot_args = NULL;
+    char* rootdev = NULL;
     uint64_t cmd_handler_ptr = 0;
     int flags = 0;
 
@@ -58,6 +59,8 @@ int main(int argc, const char * argv[]) {
             flags |= FLAG_RENAME_SNAPSHOT;
         } else if(HAS_ARG("-r", 0)) {
             flags |= FLAG_KERNELCACHD;
+        } else if(HAS_ARG("-d", 1)) {
+            rootdev = (char*) argv[i+1];
         }else if(HAS_ARG("-c", 2)) {
             cmd_handler_str = (char*) argv[i+1];
             sscanf((char*) argv[i+2], "0x%016llX", &cmd_handler_ptr);
@@ -77,6 +80,17 @@ int main(int argc, const char * argv[]) {
                 patches.insert(patches.begin(), p.begin(), p.end());
             } catch (tihmstar::exception &e) {
                 printf("%s: Error doing patch_boot_args()!\n", __FUNCTION__);
+                return -1;
+            }
+        }
+        
+        if (rootdev) {
+            try {
+                printf("getting rootdev_patch(%s) patch\n",custom_boot_args);
+                auto p = ibp->rootdev_patch(rootdev);
+                patches.insert(patches.begin(), p.begin(), p.end());
+            } catch (tihmstar::exception &e) {
+                printf("%s: Error doing rootdev_patch()!\n", __FUNCTION__);
                 return -1;
             }
         }
