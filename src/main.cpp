@@ -86,8 +86,8 @@ int main(int argc, const char * argv[]) {
         
         if (rootdev) {
             try {
-                printf("getting rootdev_patch(%s) patch\n",custom_boot_args);
-                auto p = ibp->rootdev_patch(rootdev);
+                printf("getting rootdev_patch(disk0s1s%s) patch\n",rootdev);
+                auto p = ibp->rootdev_patch(atoi(rootdev));
                 patches.insert(patches.begin(), p.begin(), p.end());
             } catch (tihmstar::exception &e) {
                 printf("%s: Error doing rootdev_patch()!\n", __FUNCTION__);
